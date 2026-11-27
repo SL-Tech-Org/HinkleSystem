@@ -1,0 +1,27 @@
+{
+  "name": "hinkle-web",
+  "private": true,
+  "scripts": {
+    "start": "ng serve --proxy-config proxy.json",
+    "build": "ng build",
+    "test": "ng test --watch=false",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@angular/core": "^21.0.0",
+    "@angular/common": "^21.0.0",
+    "@angular/compiler": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.0.0",
+    "@angular/cli": "^21.0.0",
+    "@angular/compiler-cli": "^21.0.0",
+    "@playwright/test": "^1.55.0",
+    "typescript": "~5.9.0",
+    "vitest": "^4.0.0",
+    "jsdom": "^27.0.0"
+  }
+}

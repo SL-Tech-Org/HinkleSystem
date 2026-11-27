@@ -1,0 +1,113 @@
+name: Build and deliver
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  release:
+    types: [published]
+permissions:
+  contents: read
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: hinkle_test
+          POSTGRES_USER: hinkle
+          POSTGRES_PASSWORD: ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hinkle -d hinkle_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/hinkle_test
+      SPRING_DATASOURCE_USERNAME: hinkle
+      SPRING_DATASOURCE_PASSWORD: ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew test
+  angular:
+    name: Angular
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci && npm test && npm run build
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: angular-dist
+          path: frontend/dist/hinkle/browser
+          if-no-files-found: error
+  e2e:
+    name: End-to-end
+    needs: [backend, angular]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: hinkle_test
+          POSTGRES_USER: hinkle
+          POSTGRES_PASSWORD: ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hinkle -d hinkle_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/hinkle_test
+      SPRING_DATASOURCE_USERNAME: hinkle
+      SPRING_DATASOURCE_PASSWORD: ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: angular-dist
+          path: frontend/dist/hinkle/browser
+      - run: ./gradlew bootJar -x buildFrontend
+      - run: npm ci && npx playwright install --with-deps chromium && npm run e2e
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hinkle
+          path: build/libs/hinkle.jar
+          if-no-files-found: error
+  deliver:
+    if: github.event_name == 'release'
+    needs: e2e
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hinkle
+      - name: Attach tested application to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" hinkle.jar --repo "$GITHUB_REPOSITORY" --clobber

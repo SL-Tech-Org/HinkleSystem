@@ -18,6 +18,7 @@ repositories {
 }
 
 dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
@@ -29,10 +30,37 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testCompileOnly 'org.projectlombok:lombok'
+	testRuntimeOnly 'com.h2database:h2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.named('bootJar') {
+    archiveFileName = 'hinkle.jar'
+}
+
+def npmCommand = System.getProperty('os.name').startsWith('Windows') ? ['cmd', '/c', 'npm'] : ['npm']
+
+tasks.register('installFrontend', Exec) {
+    workingDir 'frontend'
+    commandLine npmCommand + ['ci']
+    inputs.files 'frontend/package.json', 'frontend/package-lock.json'
+    outputs.dir 'frontend/node_modules'
+}
+
+tasks.register('buildFrontend', Exec) {
+    dependsOn 'installFrontend'
+    workingDir 'frontend'
+    commandLine npmCommand + ['run', 'build']
+    inputs.files fileTree('frontend/src'), fileTree('frontend') { include '*.json' }
+    outputs.dir 'frontend/dist/hinkle/browser'
+}
+
+tasks.named('bootJar') {
+    dependsOn 'buildFrontend'
+    from('frontend/dist/hinkle/browser') { into 'BOOT-INF/classes/static' }
 }
