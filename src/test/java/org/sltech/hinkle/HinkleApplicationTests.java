@@ -17,11 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class HinkleApplicationTests {
     @Test
-    void servesHomePage(@LocalServerPort int port) throws Exception {
-        var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/")).build();
+    void reportsHealthyApplication(@LocalServerPort int port) throws Exception {
+        var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/actuator/health")).build();
         var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
-        assertTrue(response.body().contains("<title>Hinkle</title>"));
+        assertTrue(response.body().contains("\"UP\""));
     }
 
     @Test
