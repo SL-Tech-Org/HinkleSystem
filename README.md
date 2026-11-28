@@ -1,5 +1,5 @@
 # HinkleSystem
-=======
+
 Hinkle is the appointment and reporting application for Lave-Auto Kimber. Its Angular 21 frontend lives in `frontend/` and its Java 21 Spring Boot backend lives in `src/main/java/`. The starter page checks application and database health.
 
 ## Build
